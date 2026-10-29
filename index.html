@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pati</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh; font-family: "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(ellipse at top, #4a1d96 0%, #1e0a3c 60%, #0d0420 100%);
+    color: #fff; text-align: center; overflow-x: hidden; padding: 20px 16px 70px;
+  }
+  .stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .star { position: absolute; background: #fff; border-radius: 50%; animation: tw 3s infinite ease-in-out; }
+  @keyframes tw { 0%,100% { opacity: .2 } 50% { opacity: 1 } }
+
+  main { position: relative; z-index: 2; max-width: 560px; margin: 0 auto; }
+  .hero { width: 170px; margin: 6px auto 0; animation: float 4s ease-in-out infinite; filter: drop-shadow(0 0 25px #b388ff88); }
+  @keyframes float { 50% { transform: translateY(-10px); } }
+  h1 { font-size: 1.7rem; margin: 6px 0; }
+  .sub { opacity: .85; margin-bottom: 8px; }
+  .tip { opacity: .7; font-size: .9rem; margin-bottom: 22px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid .flip:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 7px); }
+  @media (max-width: 380px) {
+    .grid { grid-template-columns: 1fr; }
+    .grid .flip:last-child:nth-child(odd) { width: 100%; }
+  }
+
+  /* tarjeta que se voltea */
+  .flip { perspective: 900px; aspect-ratio: 3/4; cursor: pointer; width: 100%; }
+  .inner { position: relative; width: 100%; height: 100%; transition: transform .6s; transform-style: preserve-3d; }
+  .flip.open .inner { transform: rotateY(180deg); }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 20px; overflow: hidden; border: 2px solid rgba(255,255,255,.28); box-shadow: 0 10px 25px rgba(0,0,0,.4); }
+  .front img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .front.ajustar { background: #fff; }
+  .front.ajustar img { object-fit: contain; padding-bottom: 46px; }
+  .front.ajustar .cap { background: linear-gradient(transparent, rgba(10,0,30,.9) 40%); }
+  .front .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 8px 10px; background: linear-gradient(transparent, rgba(10,0,30,.85)); }
+  .cap b { display: block; font-size: 1.02rem; }
+  .cap small { opacity: .8; font-size: .75rem; }
+  .back { transform: rotateY(180deg); background: linear-gradient(160deg, #5b2bb5, #2b1055); padding: 14px 12px; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+  .back p { font-size: .88rem; line-height: 1.4; overflow-y: auto; max-height: 100%; display: flex; align-items: center; justify-content: center; }
+
+  /* carta independiente (para textos largos) */
+  .overlay { position: fixed; inset: 0; z-index: 20; background: rgba(10,0,30,.78); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 18px; opacity: 0; visibility: hidden; transition: opacity .35s, visibility .35s; }
+  .overlay.show { opacity: 1; visibility: visible; }
+  .carta { position: relative; z-index: 2; width: 100%; max-width: 460px; max-height: 86vh; display: flex; flex-direction: column; background: linear-gradient(160deg, #6b35c9, #2b1055); border: 2px solid rgba(255,255,255,.3); border-radius: 22px; box-shadow: 0 25px 60px rgba(0,0,0,.55); transform: translateY(24px) scale(.95); transition: transform .35s; text-align: left; }
+  .overlay.show .carta { transform: none; }
+  .carta header { padding: 22px 26px 10px; text-align: center; }
+  .carta header h2 { font-size: 1.5rem; }
+  .carta header small { opacity: .75; }
+  .carta .texto { padding: 6px 26px 26px; overflow-y: auto; font-size: 1.02rem; line-height: 1.7; white-space: pre-line; }
+  .carta .cerrar { position: absolute; top: 10px; right: 12px; width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(255,255,255,.18); color: #fff; font-size: 1.1rem; cursor: pointer; }
+  .carta .cerrar:hover { background: rgba(255,255,255,.32); }
+
+  /* gatitos que suben al voltear */
+  .gato { position: fixed; bottom: -120px; z-index: 30; animation: up linear forwards; pointer-events: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+  .overlay .gato { z-index: 1; }
+  @keyframes up { to { transform: translateY(-120vh) rotate(var(--rot, 20deg)); opacity: 0; } }
+
+  /* botón de música */
+  #musica { position: fixed; right: 14px; bottom: 14px; z-index: 10; width: 48px; height: 48px; padding: 0; font-size: 1.3rem; border: 0; border-radius: 50%; background: #b388ff; color: #1a0a33; cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,.4); }
+  #musica:hover { background: #d1b3ff; }
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<audio id="bgm" src="musica.mp3" loop preload="auto"></audio>
+<button id="musica" title="Música">🎵</button>
+
+<main>
+  <svg class="hero" viewBox="0 0 220 200" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e0c3ff"/><stop offset="1" stop-color="#8e44ff"/></linearGradient></defs>
+    <circle cx="165" cy="45" r="28" fill="#fff6d6"/><circle cx="177" cy="38" r="26" fill="#2a0f55"/>
+    <path d="M110 180 C20 120 20 50 70 45 C95 42 108 62 110 72 C112 62 125 42 150 45 C200 50 200 120 110 180Z" fill="url(#hg)"/>
+    <path d="M60 70 C60 58 72 54 80 58" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".7"/>
+  </svg>
+
+  <h1 id="title"></h1>
+  <p class="sub" id="sub"></p>
+  <p class="tip">detallitos pa la depre</p>
+
+  <div class="grid" id="grid"></div>
+</main>
+
+<!-- Carta independiente -->
+<div class="overlay" id="overlay">
+  <div class="carta" role="dialog" aria-modal="true">
+    <button class="cerrar" id="cerrar" aria-label="Cerrar">✕</button>
+    <header><h2 id="cartaTitulo"></h2><small id="cartaTema"></small></header>
+    <div class="texto" id="cartaTexto"></div>
+  </div>
+</div>
+
+<script>
+  // ====== PERSONALIZA AQUÍ ======
+  const NOMBRE = "linda?";
+  const DE     = "Tu amigo";
+
+  // Fotos en la carpeta "fotos". Los mensajes son míos (no son las letras): edítalos como quieras.
+  // carta: true  →  en vez de voltearse, se abre una carta aparte (para textos largos)
+  const FOTO_GATO = "fotos/gato.png";
+  const canciones = [
+    { titulo: "Magic Shop", tema: "ya pero puedo entrar?", foto: "fotos/jk1.png",
+      mensaje: "Los días en que te odies a ti misma, Los días en los que quieras desaparecer para siempre, Hagamos una puerta en tu corazón, Si abres esa puerta y entras, Allí estaré, esperándote" },
+    { titulo: "What would i do?", tema: "no se q podria hacer without you", foto: "fotos/jk2.png",
+      mensaje: "No sabría qué hacer sin ti, Quédate a mi lado eternamente, Puedo decir, que el agua está más clara, En el otro lado, contigo " },
+    { titulo: "Congratulations", tema: "Felicidades a mi por encontrate", foto: "fotos/jk3.png",
+      mensaje: "Ves, un amor como el mío es demasiado bueno para ser verdad, Y eres demasiado divina para ser mía, El sol no brilla cuando estoy solo, Pierdo la cabeza y pierdo el control, Puedo hacerte reír" },
+    { titulo: "Still with you", tema: "si quiero seguir oño", foto: "fotos/jk4.png",
+      mensaje: "Y te diré que te extrañé, En esos bonitos recuerdos, Abrázame fuerte cuando llegue ese momento, Quería quedarme en tu cielo como una estrella" },
+    { titulo: "Mikrokosmos", tema: "Brillas, y brillas tan linda", foto: "fotos/jk5.png",
+      mensaje: "La razón por la que la noche puede verse así de hermosa, Seguramente no es a causa de esas estrellas o luces, es a causa de nosotros, Estás a mi lado, Sueño cuando te miro, Estoy a tu lado" },
+    { titulo: "gian", tema: "esta la escribi yo", foto: "fotos/tribal.png", ajustar: true, carta: true,
+      mensaje: "Estoy escribiendo esto de madrugada mientras duermes, se que estabas estresada y mal por todo lo que te pasó ese día y por problemas en general, no sabía mucho que hacer para apoyarte, solo estar ahí, lo que más me gustó aparte de que me recibieras y despidieras con un abrazo fue verte reír, también que me hagas comer el ultimo maki, me encantó, si bien te noté algo mal solo espero haber aliviado ese 7 a algo menos, se que estas durmiendo ahora y espero que hoy te vaya mejor, eres la mejor, me hiciste feliz en un día como hoy y nunca olvidaré esta primera salida, descansa y tkieyo." }
+  ];
+  // ===============================
+
+  document.getElementById("title").textContent = "Ya te dije que eras " + NOMBRE + " ";
+  document.getElementById("sub").textContent = "para tu, pa que tes feliz" ;
+
+  // Estrellas de fondo
+  const sky = document.getElementById("stars");
+  for (let k = 0; k < 70; k++) {
+    const s = document.createElement("div");
+    s.className = "star";
+    const z = 1 + Math.random() * 2.5;
+    s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${z}px;height:${z}px;animation-delay:${Math.random()*3}s`;
+    sky.appendChild(s);
+  }
+
+  // Gatitos que suben
+  function gatito(dentro) {
+    const g = new Image();
+    g.src = FOTO_GATO;
+    g.className = "gato";
+    const w = 50 + Math.random() * 60;
+    g.style.width = w + "px";
+    g.style.left = Math.random() * (window.innerWidth - w) + "px";
+    g.style.animationDuration = (3.5 + Math.random() * 3) + "s";
+    g.style.setProperty("--rot", (Math.random() * 50 - 25) + "deg");
+    (dentro || document.body).appendChild(g);
+    setTimeout(() => g.remove(), 7000);
+  }
+  const lluviaGatos = dentro => { for (let k = 0; k < 10; k++) setTimeout(() => gatito(dentro), k * 90); };
+
+  // Música de fondo (los navegadores la dejan sonar solo después de un toque)
+  const bgm = document.getElementById("bgm");
+  const btn = document.getElementById("musica");
+  bgm.volume = 0.5;
+  let quiereMusica = true;
+  function iniciar() {
+    if (quiereMusica && bgm.paused) bgm.play().then(() => btn.textContent = "🎵").catch(() => {});
+  }
+  ["click", "touchstart", "keydown"].forEach(ev => document.addEventListener(ev, iniciar, { once: true }));
+  btn.addEventListener("click", e => {
+    e.stopPropagation();
+    if (bgm.paused) { quiereMusica = true; bgm.play(); btn.textContent = "🎵"; }
+    else { quiereMusica = false; bgm.pause(); btn.textContent = "🔇"; }
+  });
+
+  // Carta independiente
+  const overlay = document.getElementById("overlay");
+  function abrirCarta(c) {
+    document.getElementById("cartaTitulo").textContent = c.titulo;
+    document.getElementById("cartaTema").textContent = c.tema;
+    document.getElementById("cartaTexto").textContent = c.mensaje;
+    overlay.classList.add("show");
+    lluviaGatos(overlay); // los gatos pasan por detrás de la carta para no tapar el texto
+  }
+  function cerrarCarta() { overlay.classList.remove("show"); }
+  document.getElementById("cerrar").addEventListener("click", cerrarCarta);
+  overlay.addEventListener("click", e => { if (e.target === overlay) cerrarCarta(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") cerrarCarta(); });
+
+  // Tarjetas
+  const grid = document.getElementById("grid");
+  canciones.forEach(c => {
+    const card = document.createElement("div");
+    card.className = "flip";
+    card.innerHTML = `
+      <div class="inner">
+        <div class="face front${c.ajustar ? ' ajustar' : ''}"><img src="${c.foto}" alt="${c.titulo}">
+          <div class="cap"><b>${c.titulo}</b><small>${c.tema}</small></div></div>
+        <div class="face back"><p>${c.mensaje}</p></div>
+      </div>`;
+    card.addEventListener("click", () => {
+      if (c.carta) { abrirCarta(c); return; }
+      card.classList.toggle("open");
+      lluviaGatos();
+    });
+    grid.appendChild(card);
+  });
+</script>
+</body>
+</html>
